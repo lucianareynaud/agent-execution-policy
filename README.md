@@ -2,148 +2,209 @@
 
 A Claude skill for agent execution policy: tightening scope, reducing credit burn, and recovering context cheaply in code-agent workflows.
 
+Repository: https://github.com/lucianareynaud/agent-execution-policy
+
 Usable in Claude Code and uploadable as a skill in Claude.ai.
 
 ---
 
 ## What you get
 
-A structured Claude skill with four files:
+This repository includes a structured Claude skill with four files:
 
-- `SKILL.md` — core skill: operating modes, routing logic, policy stack, and output instructions
-- `references/templates.md` — five atomic prompt templates and three composite patterns, ready to use or adapt
-- `references/anti-patterns.md` — diagnostic guide for classifying bad runs, cheap context architecture, and repo hygiene factors
-- `references/metrics.md` — evaluation and benchmarking guidance for measuring convergence cost
+- `code-agent-finops/SKILL.md` — the core skill: operating modes, routing logic, policy stack, and execution behavior
+- `code-agent-finops/references/templates.md` — five atomic prompt templates and three composite prompt patterns
+- `code-agent-finops/references/anti-patterns.md` — a diagnostic guide for classifying bad runs, cheap context recovery, and repository hygiene issues
+- `code-agent-finops/references/metrics.md` — evaluation and benchmarking guidance for measuring convergence cost
 
 ---
 
-## The problem it solves
+## What problem this solves
 
-Most teams evaluate code agents on speed and output volume. Those signals are useful but shallow.
+Most teams still evaluate code agents by speed and output volume.
 
-A workflow can look productive and still be economically sloppy. A change can pass tests and still violate the design. "Context recovery" can mean token burn with better branding.
+Those signals are useful, but shallow.
 
-This skill treats prompt design as execution policy. It produces the cheapest execution contract that still preserves semantic correctness — not the tightest one, not the loosest one.
+A workflow can look productive and still be economically sloppy. A change can pass tests and still violate the design. “Context recovery” can quietly become token burn with better branding.
 
-**Failure modes it targets:**
+This skill treats prompt design as execution policy.
 
-**Drift burn** — the agent reads too much, touches unrelated files, or scaffolds future work that was not requested.
+Its job is not to produce the tightest prompt or the loosest one. Its job is to produce the cheapest execution contract that still preserves semantic correctness.
 
-**Patched-but-passing** — the agent minimizes diff size and satisfies tests, but bypasses design intent. Tests pass. The system is still wrong.
+### Failure modes it targets
 
-**Memory theater** — session loss is compensated with large bootstrap dumps on every reset. Expensive, brittle, stale.
+**Drift burn**  
+The agent reads too much, touches unrelated files, or scaffolds future work that was never requested.
 
-**Validation burn** — the full test suite runs on every micro-edit. Validation spend rivals implementation spend.
+**Patched-but-passing**  
+The agent minimizes diff size and satisfies tests, but bypasses design intent. The tests pass. The implementation is still wrong.
+
+**Memory theater**  
+Session loss is “solved” by repeatedly dumping large bootstrap context into every new run. Expensive, brittle, stale.
+
+**Validation burn**  
+The full test suite runs on every micro-edit. Validation cost starts rivaling implementation cost.
+
+---
+
+## How this fits into your workflow
+
+This skill is best used **between sessions**, not inside the middle of a bad run.
+
+The typical pattern is:
+
+1. a Claude Code session went wrong  
+2. the agent drifted, burned more credits than expected, or produced something that passed tests but still feels semantically off  
+3. you open Claude.ai with this skill available  
+4. you describe what went wrong  
+5. the skill generates a calibrated execution contract  
+6. you paste that contract as the first instruction in the next Claude Code session
+
+In other words, this skill is not mainly there to “help code.” It is there to improve the policy that governs the next coding session.
+
+### The loop
+
+```text
+session ends badly
+      ↓
+open Claude.ai with the skill available
+describe what went wrong
+      ↓
+skill identifies the failure mode, selects the operating mode,
+and produces a prompt contract
+      ↓
+paste that contract as the first instruction in the next Claude Code session
+      ↓
+agent executes inside the contract
+```
+
+Two minutes between a bad run and a better one.
+
+---
+
+## Example
+
+A session added a metrics exporter. Tests passed. But the diff duplicated logic from an existing collector, touched three unrelated files, and introduced an abstraction nothing else uses.
+
+### You open Claude.ai and say:
+
+> The agent added a metrics exporter and tests pass, but it duplicated logic from an existing collector, touched unrelated files, and created an abstraction nothing else uses. I need to redo this. Write me a tighter execution prompt.
+
+### The skill responds with something like:
+
+Mode B — Local implementation.  
+Risks: drift and patched-but-passing.  
+Hardness: high.
+
+```text
+Implement only the metrics exporter as specified.
+
+Scope:
+- Modify only the exporter layer.
+- Do not touch the existing collector, routing, or any file outside the exporter boundary.
+- Do not create shared abstractions the current task did not request.
+
+Economy:
+- Read the existing collector before writing anything.
+- Use its collection interface. Do not duplicate it.
+
+Semantic correctness:
+- The exporter must consume the collector's output, not reimplement it.
+- Do not satisfy tests by bypassing the intended pipeline.
+
+Validation:
+- During iteration, run only exporter tests.
+- At the end, run the full observability suite once.
+
+Stop condition:
+- Stop when the exporter works via the existing collector and the required tests pass. Nothing else.
+```
+
+### Then you paste that into the next Claude Code session.
+
+That is the intended usage pattern.
 
 ---
 
 ## Installation
 
-**Clone the repo:**
+### Option 1: clone the repository
 
 ```bash
-git clone https://github.com/[usuario]/agent-execution-policy
+git clone https://github.com/lucianareynaud/agent-execution-policy.git
+cd agent-execution-policy
 ```
 
-For Claude Code, copy the skill folder to your skills directory:
+### Install for Claude Code
+
+Copy the skill folder into your Claude skills directory:
 
 ```bash
-cp -r agent-execution-policy/code-agent-finops ~/.claude/skills/
+mkdir -p ~/.claude/skills
+cp -r code-agent-finops ~/.claude/skills/
 ```
 
-For Claude.ai, zip the skill folder and upload it:
+### Install for Claude.ai
+
+Create a zip containing only the `code-agent-finops/` folder:
 
 ```bash
 cd agent-execution-policy
 zip -r code-agent-finops.zip code-agent-finops/
 ```
 
-Then go to Settings → Capabilities → Skills → Upload skill and select the zip.
+Then in Claude.ai go to:
+
+**Settings → Capabilities → Skills → Upload skill**
+
+and upload `code-agent-finops.zip`.
 
 ---
 
-**Download ZIP from GitHub:**
+## Install from GitHub ZIP download
 
-Click Code → Download ZIP, extract the archive, then re-zip only the `code-agent-finops/` folder:
+If you prefer downloading the repository as a ZIP from GitHub:
+
+1. Click **Code → Download ZIP**
+2. Extract the archive
+3. Re-zip only the `code-agent-finops/` folder
+
+Example:
 
 ```bash
 cd agent-execution-policy-main
 zip -r code-agent-finops.zip code-agent-finops/
 ```
 
-Upload the resulting zip in Claude.ai under Settings → Capabilities → Skills.
+Then upload that zip in Claude.ai under:
+
+**Settings → Capabilities → Skills**
 
 ---
 
-Claude can load the skill automatically when a request matches its description and trigger patterns. No manual invocation required in most cases.
+## How Claude knows when to use it
 
----
+Claude can load the skill automatically when your request matches the description and trigger patterns closely enough.
 
-## Example: Mode B — local spec execution
+That usually means you do **not** need a special command.
 
-**Situation:** A task is well-specified. The expected diff is small. The previous run burned more credits than expected and the result used a one-off special case instead of the existing integration point.
+The skill is likely to activate for requests such as:
 
-**Input:**
-> The agent keeps touching files outside the feature boundary and the last run passed tests but used a one-off special case instead of the existing validation hook. The task is to add rate-limit headers to the API response layer. Write a tighter execution prompt.
+- “this is burning more credits than it should”
+- “the agent is touching files it shouldn’t”
+- “it passed tests but the implementation feels wrong”
+- “tighten this prompt”
+- “the session got summarized, how do I recover cheaply”
+- “audit this prompt for waste”
+- “don’t let it implement future specs”
 
-**Skill output:**
-
-Mode B — Local implementation. Main risks: drift and patched-but-passing. Hardness: high. Task is well-specified and the integration point is known.
-
-```text
-Implement only the rate-limit header addition to the API response layer
-as described in the current task specification.
-
-Scope:
-- Modify only the response layer. Do not touch middleware, routing,
-  auth, or any file outside the response handling boundary.
-- Do not implement future tasks or add shared infrastructure the
-  current task did not request.
-
-Economy:
-- Read only the files required to understand the existing response
-  construction and the rate-limit data source.
-- Prefer a localized edit over introducing new abstractions.
-
-Semantic correctness:
-- Use the existing validation hook. Do not create a one-off special case.
-- Do not satisfy tests by bypassing the intended response pipeline.
-- Follow design intent over smallest diff if they conflict.
-
-Validation:
-- During iteration, run only the response-layer tests.
-- At the end, run the full API test suite once.
-- Do not chase unrelated failures.
-
-Stop condition:
-- Stop as soon as the rate-limit headers appear correctly in the response,
-  the implementation uses the existing hook, and the required tests pass.
-- Do not continue to other tasks.
-```
-
-Why this hardness level: the integration point is known, the diff should be small, and the previous run demonstrated drift and patching risk. The semantic guardrail on the existing hook is the critical constraint — without it, the agent patches again.
-
----
-
-## Trigger patterns
-
-Claude can load the skill for requests matching patterns such as:
-
-- "this is burning more credits than it should"
-- "the agent is touching files it shouldn't"
-- "it passed tests but the implementation feels wrong"
-- "tighten this prompt"
-- "the session got summarized, how do I recover cheaply"
-- "audit this prompt for waste"
-- "don't let it implement future specs"
-
-Do not use for open-ended architecture exploration or brainstorming where wide search is the intent.
+Do not use this skill for open-ended architecture exploration or brainstorming where wide search is the point.
 
 ---
 
 ## File structure
 
-```
+```text
 code-agent-finops/
 ├── SKILL.md
 └── references/
@@ -154,9 +215,24 @@ code-agent-finops/
 
 ---
 
+## What this is not
+
+This is not a generic prompt pack.
+
+It is not a guarantee of lower spend on every task, every repo, or every agent.
+
+It does not replace engineering judgment.
+
+It works best for bounded implementation work where scope, design intent, and validation boundaries can be made explicit.
+
+That limitation is intentional.
+
+This is a method with an operating envelope, not a magic trick.
+
+---
+
 ## License
 
-Commercial license. Included for personal and internal team use.
-Redistribution and resale prohibited.
+Commercial license.
 
-
+Included for personal and internal team use. Redistribution and resale are prohibited.
