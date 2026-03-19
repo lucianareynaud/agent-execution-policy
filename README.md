@@ -2,7 +2,7 @@
 
 A Claude skill for agent execution policy: tightening scope, reducing credit burn, and recovering context cheaply in code-agent workflows.
 
-Install once. Usable in Claude Code and uploadable as a skill in Claude.ai.
+Usable in Claude Code and uploadable as a skill in Claude.ai.
 
 ---
 
@@ -39,14 +39,41 @@ This skill treats prompt design as execution policy. It produces the cheapest ex
 
 ## Installation
 
-**Claude.ai:**
-1. Unzip the downloaded archive
-2. Re-zip the `code-agent-finops` folder
-3. Go to Settings → Capabilities → Skills → Upload skill
-4. Select the zip
+**Clone the repo:**
 
-**Claude Code:**
-Place the unzipped `code-agent-finops` folder in your Claude Code skills directory.
+```bash
+git clone https://github.com/[usuario]/agent-execution-policy
+```
+
+For Claude Code, copy the skill folder to your skills directory:
+
+```bash
+cp -r agent-execution-policy/code-agent-finops ~/.claude/skills/
+```
+
+For Claude.ai, zip the skill folder and upload it:
+
+```bash
+cd agent-execution-policy
+zip -r code-agent-finops.zip code-agent-finops/
+```
+
+Then go to Settings → Capabilities → Skills → Upload skill and select the zip.
+
+---
+
+**Download ZIP from GitHub:**
+
+Click Code → Download ZIP, extract the archive, then re-zip only the `code-agent-finops/` folder:
+
+```bash
+cd agent-execution-policy-main
+zip -r code-agent-finops.zip code-agent-finops/
+```
+
+Upload the resulting zip in Claude.ai under Settings → Capabilities → Skills.
+
+---
 
 Claude can load the skill automatically when a request matches its description and trigger patterns. No manual invocation required in most cases.
 
@@ -131,3 +158,5 @@ code-agent-finops/
 
 Commercial license. Included for personal and internal team use.
 Redistribution and resale prohibited.
+
+
